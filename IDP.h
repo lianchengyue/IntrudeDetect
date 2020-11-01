@@ -60,7 +60,8 @@ private:
     bool m_first_record_frame_coming_flag;  //创建文件fd
     bool m_stop_record_flag;  //停止录像
 
-
+    //optional 2:
+    long m_lRecordIdx;
 #ifdef OUTPUT_PRINT
     unsigned char *m_sOutputContent;  //输出打印
 #endif

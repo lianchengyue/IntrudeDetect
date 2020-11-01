@@ -10,7 +10,9 @@ H264Encoder::H264Encoder()
 {
 #ifdef DUMP_H264
     //date_buf
+    h264_prefix_name = (char *) malloc(VIDEO_NAME_MAX);
     h264_file_name = (char *) malloc(VIDEO_NAME_MAX);
+    h264_limit_file_name = (char *) malloc(VIDEO_NAME_MAX);
 #endif
 
 #ifdef YUYV
@@ -28,7 +30,17 @@ H264Encoder::H264Encoder()
 H264Encoder::~H264Encoder()
 {
     Destory();
+
     h264_fp = NULL;
+
+    free(h264_prefix_name);
+    h264_prefix_name = NULL;
+
+    free(h264_file_name);
+    h264_file_name = NULL;
+
+    free(h264_limit_file_name);
+    h264_limit_file_name = NULL;
 }
 
 //TQQ
@@ -85,7 +97,7 @@ void H264Encoder::compress_begin(Encoder *en, int width, int height)
     en->param->rc.i_lookahead = 0;  //最大缓冲帧数
     // 指定处理线程，如果不为1，slice设置将失效
     //en->param->i_slice_count = 4;
-    en->param->i_slice_count = 4;
+    en->param->i_slice_count = 1;
     en->param->i_width = WIDTH;
     en->param->i_height = HEIGHT;
     en->param->i_frame_total = 0;
@@ -299,6 +311,12 @@ void H264Encoder::close_encoder()
         fclose(h264_fp);
         h264_fp = NULL;
     }
+
+    if(NULL != h264_limit_fp)
+    {
+        fclose(h264_limit_fp);
+        h264_limit_fp = NULL;
+    }
 #endif
 }
 
@@ -308,21 +326,25 @@ int H264Encoder::updateH264Info()
     struct tm *timeinfo;  //56Byte
     time(&rawtime);
     timeinfo = localtime(&rawtime);
-    strftime(h264_file_name, VIDEO_NAME_MAX*sizeof(char), "%Y-%m-%d_%H-%M-%S.h264", timeinfo);
-    std::string str(h264_file_name);
+    strftime(h264_prefix_name, VIDEO_NAME_MAX*sizeof(char), "%Y-%m-%d_%H-%M-%S", timeinfo);
+    sprintf(h264_file_name, "%s.h264", h264_prefix_name);
+    //std::string str(h264_file_name);
+    sprintf(h264_limit_file_name, "%s_limit.h264", h264_prefix_name);
+    //std::string str2(h264_limit_file_name);
 
 #ifdef DUMP_H264
     h264_fp = fopen(h264_file_name, "wa+");
+    h264_limit_fp = fopen(h264_limit_file_name, "wa+");
 #endif
 }
 
 char* H264Encoder::getCurrentH264Info()
 {
-    return h264_file_name;
+    return h264_prefix_name;
 }
 
 //H264Processor
-size_t H264Encoder::encode_frame(unsigned char* input_frame, size_t input_frame_length, unsigned char* h264_buf/*, unsigned int* h264_length*/)
+size_t H264Encoder::encode_frame(unsigned char* input_frame, size_t input_frame_length, unsigned char* h264_buf/*, unsigned int* h264_length*/, long current_encode_idx)
 {
     int h264_length = 0;
     static int count = 0;
@@ -330,19 +352,38 @@ size_t H264Encoder::encode_frame(unsigned char* input_frame, size_t input_frame_
     h264_length = compress_frame(&en, -1, input_frame, input_frame_length, h264_buf);
     if ((h264_length > 0) && (NULL != h264_buf))
     {
-        if(NULL == h264_buf){
+        if(NULL == h264_buf)
+        {
             printf("h264_buf = NULL!!\n");
         }
 #ifdef DUMP_H264
-        if(fwrite(h264_buf, h264_length, 1, h264_fp)>0)
+        //前200帧率，双码流
+        if(current_encode_idx < FRAME_CNT_LIMIT)
         {
-            #ifdef LOG_H264_DEBUG
-            printf("encode_frame num = %d, size =%d\n",count++, h264_length);
-            #endif
+            if((fwrite(h264_buf, h264_length, 1, h264_fp)>0) && (fwrite(h264_buf, h264_length, 1, h264_limit_fp)>0))
+            {
+                #ifdef LOG_H264_DEBUG
+                printf("double stream encode_frame num = %d, size =%d\n",count++, h264_length);
+                #endif
+            }
+            else
+            {
+                perror("double stream encode_frame fwrite err\n");
+            }
         }
+        //超过200帧率，单码流
         else
         {
-            perror("encode_frame fwrite err\n");
+            if(fwrite(h264_buf, h264_length, 1, h264_fp)>0)
+            {
+                #ifdef LOG_H264_DEBUG
+                printf("single stream encode_frame num = %d, size =%d\n",count++, h264_length);
+                #endif
+            }
+            else
+            {
+                perror("single stream encode_frame fwrite err\n");
+            }
         }
 #endif
 

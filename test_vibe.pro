@@ -29,7 +29,9 @@ HEADERS += \
     IntrudeDetector.h \
     ForegroundDetect.h \
     RingBuffer.h \
-    Macro.h
+    Macro.h \
+    tiny_jpeg.h \
+    Convert.h
 
 SOURCES += \
 #    main-opencv.cpp \
@@ -41,7 +43,8 @@ SOURCES += \
     IDP.cpp \
     IntrudeDetector.cpp \
     RingBuffer.cpp \
-    ForegroundDetect.cpp
+    ForegroundDetect.cpp \
+    Convert.cpp
 
 INCLUDEPATH += \
 #opencv2

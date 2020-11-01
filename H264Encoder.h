@@ -21,7 +21,7 @@ public:
     void compress_end(Encoder *en);
     void Destory();
     void close_encoder();
-    size_t encode_frame(unsigned char* yuv_frame, size_t yuv_length, unsigned char* h264_buf/*, unsigned int* h264_length*/);
+    size_t encode_frame(unsigned char* yuv_frame, size_t yuv_length, unsigned char* h264_buf/*, unsigned int* h264_length*/, long current_encode_idx);
 
     BUFTYPE *usr_buf;
 
@@ -32,8 +32,11 @@ private:
     Encoder en;
 #ifdef DUMP_H264
     //char *date_buf;
+    char* h264_prefix_name;
     char* h264_file_name;
+    char* h264_limit_file_name;
     FILE *h264_fp;
+    FILE *h264_limit_fp;
 #endif
 };
 

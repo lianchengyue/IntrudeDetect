@@ -21,6 +21,9 @@
 
 #define VIDEO_NAME_MAX  256
 
+//短视频帧数 - 30秒
+#define FRAME_CNT_LIMIT  700  //24fps
+
 #define POSITIVE_CONTOURS_THRESHOLD    4//4  //3
 #define NEGATIVE_CONTOURS_THRESHOLD    2//2  //3
 #define BRIGHTNESS_THRESHOLD  200

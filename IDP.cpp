@@ -30,6 +30,7 @@ IDP::IDP(char* args)
     inFrame = new unsigned char[WIDTH * HEIGHT * 2];
     memset(inFrame, 0, WIDTH * HEIGHT);
     m_lFrameIdx = 0;
+    m_lRecordIdx = 0;  //optional 2: 本次录像的帧数
 
     //前景信息
     m_pContourBuff = (Ringbuff *)malloc(/*INTRUDE_BUFFER_NUM * */sizeof(Ringbuff));
@@ -146,13 +147,13 @@ int IDP::SceneDetectFunc()
 
     if(m_iBrightnessDumbCnt != 0)
     {
-        //printf("m_iBrightnessDumbCnt=%d\n",m_iBrightnessDumbCnt);
+        //!!printf("m_iBrightnessDumbCnt=%d\n",m_iBrightnessDumbCnt);
         m_iBrightnessDumbCnt--;
         return 10;
     }
 
     value = round(m_pSceneDetector->GetAvg(inFrame));
-    //printf("亮度: brightness value=%d\n",value);
+    //!!printf("亮度: brightness value=%d\n",value);
 
     //开灯
     if(/*(m_lFrameIdx > 30) && */(value > 1.35*m_iLastBrightness))  //1.8
@@ -210,7 +211,7 @@ int IDP::ForeDetectFunc()
         }
         contour_average_size = contour_total_size / INTRUDE_BUFFER_NUM;;//round(contour_total_size / INTRUDE_BUFFER_NUM);
     }
-    printf("contour_average_size=%f\n", contour_average_size);
+    //!!printf("contour_average_size=%f\n", contour_average_size);
 
     //2.1: 检测到前景
     if(contour_average_size > POSITIVE_CONTOURS_THRESHOLD)
@@ -225,7 +226,10 @@ int IDP::ForeDetectFunc()
             //初始化encoder
             RecordFunc(REC_PREPARE);
 
-            //开始录像
+            //optional 1: 保存封面缩略图
+            m_pRecorder->CoverThumbnail(inFrame);
+
+            //开始录像,仅开始的一帧
             RecordFunc(REC_START);
             #endif
         }
@@ -235,6 +239,8 @@ int IDP::ForeDetectFunc()
             #ifdef RECORD_FUNC
             //继续录像
             if(m_start_record_flag) {
+                //optional 2: N帧之后保存为short video
+                //m_pRecorder->CutAndSave();
                 RecordFunc(REC_START);
             }
             #endif
@@ -285,7 +291,7 @@ int IDP::ReportFunc(int messageType)
         //printf("\n");
         break;
 
-        //离开
+    //离开
     case SM_EVT_CLEAR:
         m_sOutputContent[0] = 0x00;
         m_sOutputContent[1] = 0x00;
@@ -336,14 +342,18 @@ int IDP::RecordFunc(int recType)
         m_first_record_frame_coming_flag = true;
         //DUMB时，跳过
         m_start_record_flag = true;
+        //reset record index
+        m_lRecordIdx = 0;
         break;
 
     case REC_START:
         if(0 == m_lFrameIdx%100) {
-            printf("正在录像, m_lFrameIdx=%d\n", m_lFrameIdx);
+            printf("正在录像, m_lFrameIdx=%d, m_lRecordIdx=%d\n", m_lFrameIdx, m_lRecordIdx);
         }
-        if(true == m_first_record_frame_coming_flag)
-            m_pRecorder->DoRecord(inFrame);
+        if(true == m_first_record_frame_coming_flag) {
+            m_pRecorder->DoRecord(inFrame, m_lRecordIdx);
+            m_lRecordIdx++;
+        }
         break;
 
     case REC_STOP:
@@ -352,6 +362,8 @@ int IDP::RecordFunc(int recType)
         //DUMB时，跳过
         m_start_record_flag = false;
         m_pRecorder->StopRecord();
+        //reset record index
+        m_lRecordIdx = 0;
         break;
     }
 

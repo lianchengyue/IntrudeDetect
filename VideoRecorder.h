@@ -12,8 +12,12 @@ public:
     int InitRecorder();
     //准备录像 - 设置文件信息和编码器参数
     int PrepareRecord();
+    //准备录像 - optional 1:封面缩略图
+    int CoverThumbnail(unsigned char *in_frame);
     //录像 - 编码一帧图像
-    int DoRecord(unsigned char *in_frame);
+    int DoRecord(unsigned char *in_frame, long current_encode_index);
+    //录像 - optional 2:N帧之后保存为short video
+    //int CutAndSave();
     int StopRecord();
     int ReleaseRecorder();
 
